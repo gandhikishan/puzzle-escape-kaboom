@@ -1,6 +1,6 @@
 {
-  "appName": "Bombs & Puzzles",
-  "packageName": "com.bombsandpuzzles.bombs_and_puzzles",
+  "appName": "Puzzle Escape - Kaboom",
+  "packageName": "com.puzzleescape.kaboom",
   "targetAudience": {
     "minimumAge": 3,
     "designedForFamilies": true,
@@ -15,19 +15,56 @@
   "releaseBuild": {
     "command": "flutter build appbundle --release",
     "output": "build/app/outputs/bundle/release/app-release.aab",
-    "signingNote": "Replace debug signing in android/app/build.gradle.kts with a release keystore before production upload."
+    "status": "SIGNED_AAB_BUILT_AND_VERIFIED",
+    "versionName": "1.0.0",
+    "versionCode": 1,
+    "signingNote": "Release signing is wired through android/key.properties. The real key.properties file and .jks keystore are gitignored secrets; keep backups outside the repo."
   },
   "firebaseSetup": {
     "command": "dart pub global activate flutterfire_cli && flutterfire configure",
-    "sparkTierOnly": ["Analytics", "Crashlytics", "Remote Config", "Hosting (privacy page)"]
+    "sparkTierOnly": ["Analytics", "Crashlytics", "Remote Config"],
+    "status": "OPTIONAL_PENDING",
+    "note": "App degrades gracefully without Firebase config. Configure before production if you want Analytics, Crashlytics and Remote Config live from day one."
   },
   "admobSetup": {
     "replaceTestIdsIn": "lib/ads/ads_service.dart",
     "replaceTestAppIdIn": "android/app/src/main/AndroidManifest.xml",
     "childDirected": true,
-    "maxContentRating": "G"
+    "maxContentRating": "G",
+    "status": "REAL_IDS_PENDING",
+    "note": "Current build still uses Google's test app/ad unit IDs. Replace with real AdMob IDs before a monetized production release."
   },
-  "privacyPolicyUrl": "Host hosting/public/privacy.html via Firebase Hosting, then paste the URL in Play Console.",
+  "privacyPolicyUrl": "https://gandhikishan.github.io/puzzle-escape-kaboom/",
+  "privacyPolicyNotes": "Hosted on GitHub Pages (repo: gandhikishan/puzzle-escape-kaboom; source: hosting/public/privacy.html). Update the contact email in the HTML if needed, then push to redeploy. Can be moved to Firebase Hosting later by re-pointing the same URL constant in lib/core/app_share.dart.",
   "shortDescription": "Tap bombs, launch them to the edge, and clear the board!",
-  "fullDescription": "Bombs & Puzzles is a relaxing logic puzzle with a satisfying boom. Tap a bomb and watch it slide toward the screen edge and explode. Plan the order carefully — if another bomb blocks the path, you lose a life. Three lives per stage, 1200 unique handcrafted-style procedural levels, no timers, free to play with family-safe ads."
+  "fullDescription": "Puzzle Escape - Kaboom is a relaxing logic puzzle with a satisfying boom. Tap a bomb and watch it slide toward the screen edge or follow a curved path and explode. Plan the order carefully — if another bomb blocks the route, you lose a life. Enjoy packed grids, pinch zoom, hints, three lives per stage, 1200 unique procedural levels, no timers, and family-safe ads.",
+  "playConsoleCopyPaste": {
+    "defaultLanguage": "English (United States)",
+    "appCategory": "Game / Puzzle",
+    "containsAds": true,
+    "privacyPolicyUrl": "https://gandhikishan.github.io/puzzle-escape-kaboom/",
+    "appAccess": "All features are available without login or special access.",
+    "contentRatingNotes": "No violence, gambling, user-generated content, chat, location sharing, or personal-data collection from users. Cartoon bomb/explosion theme only.",
+    "dataSafetySummary": {
+      "collectsData": true,
+      "sharesData": true,
+      "dataTypes": [
+        "Device or other IDs (Advertising ID) for ads/measurement",
+        "App activity (anonymous analytics events if Firebase is configured)",
+        "App info and performance (crash logs/diagnostics if Firebase is configured)"
+      ],
+      "purposes": [
+        "Advertising or marketing",
+        "Analytics",
+        "App functionality",
+        "Crash diagnostics"
+      ],
+      "securityPractices": [
+        "Data is encrypted in transit by Google services",
+        "Users can reset local game progress in the app",
+        "The app does not require account creation"
+      ],
+      "childrenDataNote": "Ad requests are configured as child-directed, under-age-of-consent, non-personalized, and max ad content rating G."
+    }
+  }
 }

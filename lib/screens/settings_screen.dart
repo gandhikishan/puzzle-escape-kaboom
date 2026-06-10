@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_palette.dart';
+import '../core/app_share.dart';
 import '../state/providers.dart';
 
 /// Settings: sound toggle, progress reset, and legal/about info.
@@ -58,6 +60,19 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _Card(
               child: ListTile(
+                leading: const Icon(Icons.ios_share_rounded,
+                    color: AppPalette.accent),
+                title: const Text('Share app'),
+                subtitle: const Text(
+                  'Invite friends via WhatsApp, Messages and more',
+                  style: TextStyle(color: AppPalette.textMuted),
+                ),
+                onTap: AppShare.shareApp,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _Card(
+              child: ListTile(
                 leading: const Icon(Icons.restart_alt_rounded),
                 title: const Text('Reset progress'),
                 onTap: () => _confirmReset(context, ref),
@@ -72,13 +87,13 @@ class SettingsScreen extends ConsumerWidget {
                   'Opens the hosted policy in your browser',
                   style: TextStyle(color: AppPalette.textMuted),
                 ),
-                onTap: () => _showPrivacyInfo(context),
+                onTap: () => _openPrivacy(context),
               ),
             ),
             const SizedBox(height: 24),
             const Center(
               child: Text(
-                'Bombs & Puzzles  -  v1.0.0',
+                'Puzzle Escape - Kaboom  -  v1.0.0',
                 style: TextStyle(color: AppPalette.textMuted),
               ),
             ),
@@ -112,25 +127,14 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  void _showPrivacyInfo(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppPalette.surface,
-        title: const Text('Privacy policy'),
-        content: const Text(
-          'The privacy policy will be hosted online before release and linked '
-          'here. The game stores progress only on your device and shows ads via '
-          'Google AdMob.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _openPrivacy(BuildContext context) async {
+    final uri = Uri.parse(AppShare.privacyUrl);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the privacy policy.')),
+      );
+    }
   }
 }
 

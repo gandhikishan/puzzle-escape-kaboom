@@ -57,23 +57,42 @@ enum BombDirection {
 }
 
 /// A single bomb placed on the grid.
+///
+/// Most bombs travel straight off the board in [direction]. A bomb may instead
+/// follow a curved route by supplying [path]: an ordered list of step
+/// directions taken from its cell until it leaves the board. When [path] is
+/// set, [direction] is the bomb's initial facing (used for the arrow icon).
 class Bomb {
-  const Bomb({required this.x, required this.y, required this.direction});
+  const Bomb({
+    required this.x,
+    required this.y,
+    required this.direction,
+    this.path,
+  });
 
   final int x;
   final int y;
   final BombDirection direction;
 
+  /// Ordered movement steps for a curved bomb, or null for a straight bomb.
+  final List<BombDirection>? path;
+
+  bool get isCurved => path != null && path!.isNotEmpty;
+
   Map<String, dynamic> toJson() => {
         'x': x,
         'y': y,
         'd': direction.id,
+        if (isCurved) 'p': path!.map((d) => d.id).toList(),
       };
 
   factory Bomb.fromJson(Map<String, dynamic> json) => Bomb(
         x: json['x'] as int,
         y: json['y'] as int,
         direction: BombDirection.fromId(json['d'] as String),
+        path: (json['p'] as List?)
+            ?.map((e) => BombDirection.fromId(e as String))
+            .toList(),
       );
 }
 
@@ -117,9 +136,10 @@ class Level {
 
   /// Stable signature of the layout used to deduplicate generated stages.
   String signature() {
-    final parts = bombs
-        .map((b) => '${b.x},${b.y},${b.direction.id}')
-        .toList()
+    final parts = bombs.map((b) {
+      final route = b.isCurved ? b.path!.map((d) => d.id).join('>') : b.direction.id;
+      return '${b.x},${b.y},$route';
+    }).toList()
       ..sort();
     return '$width x$height|${parts.join(';')}';
   }

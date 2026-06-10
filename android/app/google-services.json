@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "677845814097",
+    "project_id": "bombs-and-puzzles",
+    "storage_bucket": "bombs-and-puzzles.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:677845814097:android:2f28383d8afff68edf2170",
+        "android_client_info": {
+          "package_name": "com.puzzleescape.kaboom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBj8UzDIyOIQL1JYmvw8ifj7s_gcTWBdYo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

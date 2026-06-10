@@ -11,7 +11,7 @@ class BombsAndPuzzlesApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bombs and Puzzles',
+      title: 'Puzzle Escape - Kaboom',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: const HomeScreen(),

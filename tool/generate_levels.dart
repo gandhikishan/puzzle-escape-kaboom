@@ -14,6 +14,7 @@ import 'dart:io';
 
 import 'package:bombs_and_puzzles/levels/generator.dart';
 import 'package:bombs_and_puzzles/levels/level.dart';
+import 'package:bombs_and_puzzles/levels/solver.dart';
 
 void main(List<String> args) {
   final count = args.isNotEmpty ? int.parse(args[0]) : 1200;
@@ -21,30 +22,52 @@ void main(List<String> args) {
   final seen = <String>{};
   final levels = <Level>[];
   var seed = 1000;
-  const maxTriesPerStage = 400;
+
+  // For each stage we generate several unique candidates and then pick the one
+  // whose measured difficulty matches the intended progression band. This is
+  // what makes later stages genuinely tougher rather than just bigger.
+  const candidateTarget = 16;
+  const maxTriesPerStage = 600;
 
   for (var stage = 1; stage <= count; stage++) {
     final spec = difficultyForStage(stage);
-    Level? chosen;
+    final candidates = <Level>[];
+    final candidateSigs = <String>{};
 
-    for (var tries = 0; tries < maxTriesPerStage; tries++) {
+    var tries = 0;
+    while (candidates.length < candidateTarget && tries < maxTriesPerStage) {
+      tries++;
       final candidate = LevelGenerator(seed++).generate(id: stage, spec: spec);
       if (candidate == null) continue;
       final signature = candidate.signature();
-      if (seen.contains(signature)) continue;
-      seen.add(signature);
-      chosen = candidate;
-      break;
+      if (seen.contains(signature) || candidateSigs.contains(signature)) {
+        continue;
+      }
+      candidateSigs.add(signature);
+      candidates.add(candidate);
     }
 
-    if (chosen == null) {
+    if (candidates.isEmpty) {
       stderr.writeln('ERROR: could not generate a unique stage $stage');
       exit(1);
     }
+
+    // Sort candidates easy -> hard and pick by the stage's target band.
+    candidates.sort(
+      (a, b) => computeMetrics(a).score.compareTo(computeMetrics(b).score),
+    );
+    final p = targetDifficultyFraction(stage);
+    final pick = (p * (candidates.length - 1)).round();
+    final chosen = candidates[pick];
+
+    seen.add(chosen.signature());
     levels.add(chosen);
 
     if (stage % 100 == 0) {
-      stdout.writeln('  ...generated $stage / $count');
+      final m = computeMetrics(chosen);
+      stdout.writeln('  ...stage $stage  '
+          'grid ${chosen.width}x${chosen.height}  bombs ${chosen.bombCount}  '
+          'difficulty ${m.score.toStringAsFixed(2)}');
     }
   }
 

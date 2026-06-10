@@ -1,4 +1,4 @@
-package com.bombsandpuzzles.bombs_and_puzzles
+package com.puzzleescape.kaboom
 
 import io.flutter.embedding.android.FlutterActivity
 

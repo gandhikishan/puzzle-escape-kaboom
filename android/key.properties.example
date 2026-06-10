@@ -1,0 +1,10 @@
+# Template for android/key.properties (the real file is gitignored).
+# After creating your upload keystore, copy this file to `key.properties`
+# in the same folder and fill in your real values.
+#
+#   cp key.properties.example key.properties
+#
+storePassword=CvwHx8W3oDG9SY16yFWz
+keyPassword=CvwHx8W3oDG9SY16yFWz
+keyAlias=upload
+storeFile=/Users/apple/keystores/puzzleescape-upload.jks

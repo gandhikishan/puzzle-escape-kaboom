@@ -20,6 +20,8 @@ class BombComponent extends PositionComponent
     required this.direction,
     required double cellSize,
     required Vector2 center,
+    this.path,
+    this.routeOffsets,
   }) {
     size = Vector2.all(cellSize);
     anchor = Anchor.center;
@@ -30,13 +32,29 @@ class BombComponent extends PositionComponent
   final int gridY;
   final BombDirection direction;
 
+  /// Curved-route step list (null for straight bombs). Used for clear-path
+  /// checks against the live grid.
+  final List<BombDirection>? path;
+
+  /// Points the bomb travels through, as offsets from the bomb's centre. The
+  /// last entry is the off-board exit point. Null for straight bombs.
+  final List<Vector2>? routeOffsets;
+
+  bool get isCurved => path != null && path!.isNotEmpty;
+
   /// Set true the moment a bomb starts leaving so further taps ignore it.
   bool launching = false;
 
   double _flash = 0;
+  double _hint = 0;
 
   void triggerCollisionFlash() {
     _flash = 1.0;
+  }
+
+  /// Pulses a positive highlight to point the player at a safe bomb.
+  void triggerHint() {
+    _hint = 1.0;
   }
 
   @override
@@ -44,6 +62,9 @@ class BombComponent extends PositionComponent
     super.update(dt);
     if (_flash > 0) {
       _flash = max(0, _flash - dt * 3.0);
+    }
+    if (_hint > 0) {
+      _hint = max(0, _hint - dt * 0.6);
     }
   }
 
@@ -57,6 +78,10 @@ class BombComponent extends PositionComponent
     final s = size.x;
     final radius = s * 0.34;
     final center = Offset(s / 2, s / 2);
+
+    if (isCurved && routeOffsets != null && !launching) {
+      _drawRoute(canvas, center, radius);
+    }
 
     // Soft drop shadow grounds the bomb on the tile.
     canvas.drawCircle(
@@ -100,6 +125,72 @@ class BombComponent extends PositionComponent
           ..strokeWidth = 3,
       );
     }
+
+    if (_hint > 0) {
+      // Two pulsing success-colored rings to draw the eye.
+      final pulse = (1 - _hint);
+      canvas.drawCircle(
+        center,
+        radius * (1.05 + pulse * 0.5),
+        Paint()
+          ..color = AppPalette.success.withValues(alpha: _hint)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4,
+      );
+      canvas.drawCircle(
+        center,
+        radius * 1.05,
+        Paint()..color = AppPalette.success.withValues(alpha: _hint * 0.18),
+      );
+    }
+  }
+
+  /// Draws the curved route as a translucent dotted trail with an arrowhead at
+  /// the exit so the player can read where this bomb will travel.
+  void _drawRoute(Canvas canvas, Offset center, double radius) {
+    final offsets = routeOffsets!;
+    final points = <Offset>[
+      center,
+      for (final o in offsets) center.translate(o.x, o.y),
+    ];
+
+    final trail = Path()..moveTo(points.first.dx, points.first.dy);
+    for (var i = 1; i < points.length; i++) {
+      trail.lineTo(points[i].dx, points[i].dy);
+    }
+
+    canvas.drawPath(
+      trail,
+      Paint()
+        ..color = AppPalette.accent.withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = radius * 0.34
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Bend markers.
+    for (var i = 1; i < points.length - 1; i++) {
+      canvas.drawCircle(points[i], radius * 0.16,
+          Paint()..color = AppPalette.accent.withValues(alpha: 0.7));
+    }
+
+    // Arrowhead at the exit, oriented along the final segment.
+    final tipEnd = points.last;
+    final prev = points[points.length - 2];
+    final angle = atan2(tipEnd.dy - prev.dy, tipEnd.dx - prev.dx);
+    const headLen = 0.0;
+    final size = radius * 0.6;
+    canvas.save();
+    canvas.translate(tipEnd.dx, tipEnd.dy);
+    canvas.rotate(angle);
+    final head = Path()
+      ..moveTo(headLen, 0)
+      ..lineTo(-size * 0.7, size * 0.5)
+      ..lineTo(-size * 0.7, -size * 0.5)
+      ..close();
+    canvas.drawPath(head, Paint()..color = AppPalette.accent);
+    canvas.restore();
   }
 
   void _drawArrow(Canvas canvas, Offset center, double radius) {

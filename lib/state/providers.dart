@@ -84,9 +84,8 @@ class ProgressNotifier extends Notifier<ProgressState> {
   void reset() {
     final storage = ref.read(storageServiceProvider);
     storage.resetProgress();
-    state = const ProgressState(
+    state = state.copyWith(
       currentStage: 1,
-      highestStage: 1,
       stagesCleared: 0,
     );
   }
@@ -118,3 +117,55 @@ class SettingsNotifier extends Notifier<SettingsState> {
 
 final settingsProvider =
     NotifierProvider<SettingsNotifier, SettingsState>(SettingsNotifier.new);
+
+/// Hint economy: a running balance that the player spends to reveal a safe
+/// bomb. One free hint is granted per calendar day the app is opened, and more
+/// can be earned by watching a rewarded ad.
+class HintsNotifier extends Notifier<int> {
+  /// Hints awarded for watching one rewarded ad.
+  static const int hintsPerAd = 3;
+
+  @override
+  int build() {
+    final storage = ref.read(storageServiceProvider);
+    return _grantDailyIfNeeded(storage);
+  }
+
+  int _grantDailyIfNeeded(StorageService storage) {
+    final today = _todayYmd();
+    var hints = storage.hints;
+    if (storage.lastFreeHintDay != today) {
+      hints += 1;
+      storage.setHints(hints);
+      storage.setLastFreeHintDay(today);
+    }
+    return hints;
+  }
+
+  /// Spends one hint. Returns false when the balance is empty.
+  bool consume() {
+    if (state <= 0) return false;
+    final storage = ref.read(storageServiceProvider);
+    final next = state - 1;
+    storage.setHints(next);
+    state = next;
+    return true;
+  }
+
+  void add(int amount) {
+    final storage = ref.read(storageServiceProvider);
+    final next = state + amount;
+    storage.setHints(next);
+    state = next;
+  }
+
+  static String _todayYmd() {
+    final now = DateTime.now();
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$m-$d';
+  }
+}
+
+final hintsProvider =
+    NotifierProvider<HintsNotifier, int>(HintsNotifier.new);

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bombs_and_puzzles/levels/generator.dart';
 import 'package:bombs_and_puzzles/levels/level.dart';
 import 'package:bombs_and_puzzles/levels/solver.dart';
+// computeMetrics is used in the difficulty-trend test below.
 
 void main() {
   group('generator', () {
@@ -20,7 +21,28 @@ void main() {
       final late = difficultyForStage(1000);
       expect(late.width >= early.width, isTrue);
       expect(late.height >= early.height, isTrue);
-      expect(late.targetBombs > early.targetBombs, isTrue);
+      expect(late.width * late.height > early.width * early.height, isTrue);
+    });
+
+    test('measured difficulty trends upward across the game', () {
+      double bandAverage(int from, int to) {
+        final gen = LevelGenerator(from * 31 + 5);
+        var sum = 0.0;
+        var n = 0;
+        for (var stage = from; stage <= to; stage++) {
+          final level =
+              gen.generate(id: stage, spec: difficultyForStage(stage));
+          if (level == null) continue;
+          sum += computeMetrics(level).score;
+          n++;
+        }
+        return sum / n;
+      }
+
+      final earlyBand = bandAverage(1, 15);
+      final lateBand = bandAverage(500, 515);
+      expect(lateBand, greaterThan(earlyBand * 3),
+          reason: 'late stages should be far harder than early ones');
     });
   });
 

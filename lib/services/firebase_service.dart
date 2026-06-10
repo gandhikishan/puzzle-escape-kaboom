@@ -4,6 +4,8 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 
+import '../firebase_options.dart';
+
 /// Wraps the free-tier Firebase services: Analytics, Crashlytics and Remote
 /// Config. Everything degrades gracefully: if Firebase has not been configured
 /// for the project yet (no `google-services.json` / `firebase_options.dart`),
@@ -23,7 +25,9 @@ class FirebaseService {
 
   Future<void> init() async {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _analytics = FirebaseAnalytics.instance;
 
       FlutterError.onError =
@@ -43,14 +47,13 @@ class FirebaseService {
 
   Future<void> _initRemoteConfig() async {
     final rc = FirebaseRemoteConfig.instance;
-    await rc.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: const Duration(hours: 6),
-    ));
-    await rc.setDefaults(const {
-      _kInterstitialEveryN: 3,
-      _kLivesPerStage: 3,
-    });
+    await rc.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 10),
+        minimumFetchInterval: const Duration(hours: 6),
+      ),
+    );
+    await rc.setDefaults(const {_kInterstitialEveryN: 3, _kLivesPerStage: 3});
     try {
       await rc.fetchAndActivate();
     } catch (_) {

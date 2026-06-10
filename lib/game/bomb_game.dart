@@ -34,6 +34,11 @@ class BombGame extends FlameGame {
   int _remaining = 0;
   bool _active = false;
 
+  /// The canvas size the current board was laid out for. Used to detect the
+  /// transient-size-then-final-size sequence Flutter produces during the first
+  /// layout passes, so we re-lay-out once the real size arrives.
+  Vector2? _builtSize;
+
   final PositionComponent _layer = PositionComponent();
 
   double _shakeTime = 0;
@@ -46,19 +51,20 @@ class BombGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await add(_layer);
-    final pending = _level;
-    if (pending != null) {
-      _build(pending);
-    }
+    // The actual stage build happens in update() once the canvas reports a
+    // usable size and the layer is mounted.
   }
 
   /// Loads (or reloads) a stage. Safe to call before or after [onLoad].
   void loadLevel(Level level) {
     _level = level;
-    if (isLoaded) {
+    _builtSize = null;
+    if (isLoaded && _hasUsableSize && _layer.isMounted) {
       _build(level);
     }
   }
+
+  bool get _hasUsableSize => size.x > 8 && size.y > 8;
 
   void _build(Level level) {
     _layer.removeWhere((_) => true);
@@ -71,6 +77,7 @@ class BombGame extends FlameGame {
     );
     _remaining = level.bombs.length;
     _active = true;
+    _builtSize = size.clone();
 
     final layout = _computeLayout(level);
 
@@ -92,21 +99,52 @@ class BombGame extends FlameGame {
         direction: bomb.direction,
         cellSize: layout.cell,
         center: center,
+        path: bomb.path,
+        routeOffsets:
+            bomb.isCurved ? _routeOffsets(bomb, layout, center) : null,
       );
       _grid[bomb.y][bomb.x] = component;
       _layer.add(component);
     }
   }
 
+  /// World-space points (as offsets from [center]) that a curved bomb travels
+  /// through, ending just off the board edge.
+  List<Vector2> _routeOffsets(Bomb bomb, _Layout layout, Vector2 center) {
+    final points = <Vector2>[];
+    var cx = bomb.x;
+    var cy = bomb.y;
+    for (final step in bomb.path!) {
+      cx += step.dx;
+      cy += step.dy;
+      final world = Vector2(
+        layout.origin.x + (cx + 0.5) * layout.cell,
+        layout.origin.y + (cy + 0.5) * layout.cell,
+      );
+      points.add(world - center);
+      final level = _level!;
+      if (cx < 0 || cx >= level.width || cy < 0 || cy >= level.height) {
+        break; // this point is the off-board exit
+      }
+    }
+    return points;
+  }
+
   _Layout _computeLayout(Level level) {
-    final padding = 16.0;
+    const padding = 24.0;
+    // Cap the cell size so the board stays compact (smaller grid) instead of
+    // stretching edge-to-edge. The player pinch-zooms in to tap precisely.
+    const maxCell = 92.0;
     final available = Vector2(
       size.x - padding * 2,
       size.y - padding * 2,
     );
     final cell = min(
-      available.x / level.width,
-      available.y / level.height,
+      maxCell,
+      min(
+        available.x / level.width,
+        available.y / level.height,
+      ),
     );
     final boardWidth = cell * level.width;
     final boardHeight = cell * level.height;
@@ -127,11 +165,43 @@ class BombGame extends FlameGame {
     }
   }
 
+  /// Highlights one bomb that currently has a clear path. Returns false if the
+  /// board is not in a playable state (nothing to hint).
+  bool showHint() {
+    if (!_active) return false;
+    final level = _level;
+    if (level == null) return false;
+    for (var y = 0; y < level.height; y++) {
+      for (var x = 0; x < level.width; x++) {
+        final bomb = _grid[y][x];
+        if (bomb != null && !bomb.launching && _hasClearPath(bomb)) {
+          bomb.triggerHint();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   bool _hasClearPath(BombComponent bomb) {
+    final level = _level!;
+    if (bomb.path != null) {
+      var cx = bomb.gridX;
+      var cy = bomb.gridY;
+      for (final step in bomb.path!) {
+        cx += step.dx;
+        cy += step.dy;
+        if (cx < 0 || cx >= level.width || cy < 0 || cy >= level.height) {
+          return true; // exited the board
+        }
+        if (_grid[cy][cx] != null) return false;
+      }
+      return true;
+    }
+
     final dir = bomb.direction;
     var cx = bomb.gridX + dir.dx;
     var cy = bomb.gridY + dir.dy;
-    final level = _level!;
     while (cx >= 0 && cx < level.width && cy >= 0 && cy < level.height) {
       if (_grid[cy][cx] != null) return false;
       cx += dir.dx;
@@ -144,6 +214,28 @@ class BombGame extends FlameGame {
     bomb.launching = true;
     _grid[bomb.gridY][bomb.gridX] = null;
     onSound?.call(GameSound.tap);
+
+    if (bomb.isCurved && bomb.routeOffsets != null) {
+      final offsets = bomb.routeOffsets!;
+      final path = Path()..moveTo(0, 0);
+      var length = 0.0;
+      var prev = Vector2.zero();
+      for (final o in offsets) {
+        path.lineTo(o.x, o.y);
+        length += (o - prev).length;
+        prev = o;
+      }
+      final exit = bomb.position + offsets.last;
+      final duration = (length / 900).clamp(0.18, 0.9);
+      bomb.add(
+        MoveAlongPathEffect(
+          path,
+          EffectController(duration: duration, curve: Curves.easeIn),
+          onComplete: () => _onBombExited(bomb, exit),
+        ),
+      );
+      return;
+    }
 
     final target = _edgePoint(bomb.position, bomb.direction);
     final distance = bomb.position.distanceTo(target);
@@ -205,6 +297,20 @@ class BombGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
+
+    // Build (or re-lay-out) the stage whenever the canvas reports a new usable
+    // size. The first layout passes can report a transient tiny size, so we
+    // rebuild once the real size settles. Guarded so an in-progress board is
+    // only re-laid-out on an actual size change, not every frame.
+    final level = _level;
+    if (level != null && _layer.isMounted && _hasUsableSize) {
+      final built = _builtSize;
+      if (built == null || (built.x - size.x).abs() > 1 ||
+          (built.y - size.y).abs() > 1) {
+        _build(level);
+      }
+    }
+
     if (_shakeTime > 0) {
       _shakeTime -= dt;
       final falloff = (_shakeTime / 0.32).clamp(0.0, 1.0);
@@ -219,14 +325,6 @@ class BombGame extends FlameGame {
     }
   }
 
-  @override
-  void onGameResize(Vector2 size) {
-    super.onGameResize(size);
-    final level = _level;
-    if (level != null && isLoaded && _active) {
-      _build(level);
-    }
-  }
 }
 
 class _Layout {
