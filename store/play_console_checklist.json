@@ -1,0 +1,33 @@
+{
+  "appName": "Bombs & Puzzles",
+  "packageName": "com.bombsandpuzzles.bombs_and_puzzles",
+  "targetAudience": {
+    "minimumAge": 3,
+    "designedForFamilies": true,
+    "targetAgeGroups": ["AGE_5_AND_UNDER", "AGE_6_8", "AGE_9_12", "AGE_13_17", "AGE_18_AND_OVER"],
+    "adsTaggedChildDirected": true,
+    "personalizedAdsForChildren": false
+  },
+  "contentRating": {
+    "questionnaire": "IARC / Google Play questionnaire",
+    "expectedRating": "Everyone / PEGI 3 / USK 0"
+  },
+  "releaseBuild": {
+    "command": "flutter build appbundle --release",
+    "output": "build/app/outputs/bundle/release/app-release.aab",
+    "signingNote": "Replace debug signing in android/app/build.gradle.kts with a release keystore before production upload."
+  },
+  "firebaseSetup": {
+    "command": "dart pub global activate flutterfire_cli && flutterfire configure",
+    "sparkTierOnly": ["Analytics", "Crashlytics", "Remote Config", "Hosting (privacy page)"]
+  },
+  "admobSetup": {
+    "replaceTestIdsIn": "lib/ads/ads_service.dart",
+    "replaceTestAppIdIn": "android/app/src/main/AndroidManifest.xml",
+    "childDirected": true,
+    "maxContentRating": "G"
+  },
+  "privacyPolicyUrl": "Host hosting/public/privacy.html via Firebase Hosting, then paste the URL in Play Console.",
+  "shortDescription": "Tap bombs, launch them to the edge, and clear the board!",
+  "fullDescription": "Bombs & Puzzles is a relaxing logic puzzle with a satisfying boom. Tap a bomb and watch it slide toward the screen edge and explode. Plan the order carefully — if another bomb blocks the path, you lose a life. Three lives per stage, 1200 unique handcrafted-style procedural levels, no timers, free to play with family-safe ads."
+}
